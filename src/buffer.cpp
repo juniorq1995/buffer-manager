@@ -67,6 +67,30 @@ void BufMgr::readPage(File* file, const PageId pageNo, Page*& page)
 // does nothing if page not in table lookup
 void BufMgr::unPinPage(File* file, const PageId pageNo, const bool dirty)
 {
+	FrameId frame_id;
+	try {
+		// Lookup hash
+		hashTable->lookup(file, pageNo, frame_id);
+		// find frame in table
+		BufDesc frame = bufDescTable[frame_id];
+
+		// throw page not pinned if not pinned
+		if (frame.pinCnt <= 0) {
+			throw PageNotPinnedException(file->filename(), pageNo, frame_id)
+		}
+
+		// udpate dirty value
+		if (dirty) {
+			frame.dirty = true;
+		}
+
+		// decrement from being unpinned
+		frame.pinCnt--;
+
+	} catch (HashNotFoundException h) {
+		// Do nothing
+	}
+
 }
 
 // scans bufTable for pages belonging to file
@@ -77,6 +101,7 @@ void BufMgr::unPinPage(File* file, const PageId pageNo, const bool dirty)
 // throws bad_buffer_exception if invalid page encountered
 void BufMgr::flushFile(const File* file)
 {
+
 }
 
 // allocate empty page in file
@@ -85,6 +110,7 @@ void BufMgr::flushFile(const File* file)
 // returns page number and pointer to buffer frame
 void BufMgr::allocPage(File* file, PageId &pageNo, Page*& page)
 {
+	
 }
 
 // deletes page from file

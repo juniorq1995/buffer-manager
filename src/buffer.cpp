@@ -16,23 +16,29 @@
 
 namespace badgerdb {
 
-BufMgr::BufMgr(std::uint32_t bufs)
-	: numBufs(bufs) {
-	bufDescTable = new BufDesc[bufs];
+	BufMgr::BufMgr(std::uint32_t bufs) : numBufs(bufs) {
+		bufDescTable = new BufDesc[bufs];
 
+<<<<<<< HEAD
   for (FrameId i = 0; i < bufs; i++)
   {
   	bufDescTable[i].frameNo = i;
   	bufDescTable[i].valid = false;
   }
+=======
+		for (FrameId i = 0; i < bufs; i++) {
+			bufDescTable[i].frameNo = i;
+			bufDescTable[i].valid = false;
+		}
+>>>>>>> f27f2762058c19598a4b68e8ae30912e0fabe226
 
-  bufPool = new Page[bufs];
+		bufPool = new Page[bufs];
 
-	int htsize = ((((int) (bufs * 1.2))*2)/2)+1;
-  hashTable = new BufHashTbl (htsize);  // allocate the buffer hash table
+		int htsize = ((((int)(bufs * 1.2)) * 2) / 2) + 1;
+		hashTable = new BufHashTbl(htsize);  // allocate the buffer hash table
 
-  clockHand = bufs - 1;
-}
+		clockHand = bufs - 1;
+	}
 
 //Flushes dirty pages and deallocates the buffer pool and BufDesc table
 BufMgr::~BufMgr()
@@ -43,8 +49,12 @@ BufMgr::~BufMgr()
 // Advances clock to next frame in buffer pool.
 void BufMgr::advanceClock()
 {
-
+	clockHand = (clockHand == numBufs - 1) ? 0 : clockHand + 1;
 }
+
+	void BufMgr::allocBuf(FrameId & frame)
+	{
+	}
 
 // Allocates free frame using clock algorithm
 // If necessary, writes dirty page back to disk
@@ -110,7 +120,7 @@ void BufMgr::flushFile(const File* file)
 // returns page number and pointer to buffer frame
 void BufMgr::allocPage(File* file, PageId &pageNo, Page*& page)
 {
-	
+
 }
 
 // deletes page from file
@@ -127,15 +137,20 @@ void BufMgr::printSelf(void)
 
   for (std::uint32_t i = 0; i < numBufs; i++)
 	{
-  	tmpbuf = &(bufDescTable[i]);
-		std::cout << "FrameNo:" << i << " ";
-		tmpbuf->Print();
+		BufDesc* tmpbuf;
+		int validFrames = 0;
 
-  	if (tmpbuf->valid == true)
-    	validFrames++;
-  }
+		for (std::uint32_t i = 0; i < numBufs; i++)
+		{
+			tmpbuf = &(bufDescTable[i]);
+			std::cout << "FrameNo:" << i << " ";
+			tmpbuf->Print();
 
-	std::cout << "Total Number of Valid Frames:" << validFrames << "\n";
-}
+			if (tmpbuf->valid == true)
+				validFrames++;
+		}
+
+		std::cout << "Total Number of Valid Frames:" << validFrames << "\n";
+	}
 
 }

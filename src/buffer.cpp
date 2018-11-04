@@ -16,29 +16,22 @@
 
 namespace badgerdb {
 
-	BufMgr::BufMgr(std::uint32_t bufs) : numBufs(bufs) {
-		bufDescTable = new BufDesc[bufs];
+BufMgr::BufMgr(std::uint32_t bufs) : numBufs(bufs) {
+	bufDescTable = new BufDesc[bufs];
 
-<<<<<<< HEAD
   for (FrameId i = 0; i < bufs; i++)
   {
   	bufDescTable[i].frameNo = i;
   	bufDescTable[i].valid = false;
   }
-=======
-		for (FrameId i = 0; i < bufs; i++) {
-			bufDescTable[i].frameNo = i;
-			bufDescTable[i].valid = false;
-		}
->>>>>>> f27f2762058c19598a4b68e8ae30912e0fabe226
 
-		bufPool = new Page[bufs];
+	bufPool = new Page[bufs];
 
-		int htsize = ((((int)(bufs * 1.2)) * 2) / 2) + 1;
-		hashTable = new BufHashTbl(htsize);  // allocate the buffer hash table
+	int htsize = ((((int)(bufs * 1.2)) * 2) / 2) + 1;
+	hashTable = new BufHashTbl(htsize);  // allocate the buffer hash table
 
-		clockHand = bufs - 1;
-	}
+	clockHand = bufs - 1;
+}
 
 //Flushes dirty pages and deallocates the buffer pool and BufDesc table
 BufMgr::~BufMgr()

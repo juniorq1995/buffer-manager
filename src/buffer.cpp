@@ -52,9 +52,10 @@ void BufMgr::advanceClock()
 	clockHand = (clockHand == numBufs - 1) ? 0 : clockHand + 1;
 }
 
-	void BufMgr::allocBuf(FrameId & frame)
-	{
-	}
+void BufMgr::allocBuf(FrameId & frame)
+{
+
+}
 
 // Allocates free frame using clock algorithm
 // If necessary, writes dirty page back to disk

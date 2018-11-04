@@ -1,0 +1,54 @@
+# Compiled class file
+**/.sln/
+
+# Metadata
+**/.metadata/
+
+# Project
+**.project
+
+# Class Path
+**.classpath
+**/.recommenders/
+
+**.vscode/
+
+**/.recommenders/
+
+# Settings
+**/.settings/
+
+# Log file
+*.log
+
+# BlueJ files
+*.ctxt
+
+# Mobile Tools for Java (J2ME)
+.mtj.tmp/
+
+# Package Files #
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+hs_err_pid*
+*.sln
+*.vcxproj
+*.filters
+Project2/.vs/Project2/v14/.suo
+src/test.1
+src/test.2
+src/test.3
+src/test.4
+src/test.5
+src/badgerdb_main
+Project2/Project2.VC.db
+Project2/Project2.VC.VC.opendb
+src/badgerdb_main
+src/badgerdb_main

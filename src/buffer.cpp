@@ -190,7 +190,24 @@ namespace badgerdb {
 	// returns page number and pointer to buffer frame
 	void BufMgr::allocPage(File* file, PageId &pageNo, Page*& page)
 	{
+		// Number of available frame (filled by allocBuf)
+		FrameId frame;
 
+		// allocate new page
+		Page currPage = file->allocatePage();
+
+		// allocate buffer frame
+		allocBuf(frame);
+
+		// put page in buffer
+		bufPool[frame] = currPage;
+
+		hashTable->insert(file, currPage.page_number(), frame);
+
+		bufDescTable[frame].Set(file, currPage.page_number());
+
+		pageNo = currPage.page_number();
+		page = &bufPool[frame];
 	}
 
 	// deletes page from file

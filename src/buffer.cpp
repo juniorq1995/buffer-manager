@@ -113,7 +113,7 @@ namespace badgerdb {
 		FrameId frameNo;
 		try {
 			// Fetch the desired hashtable
-			hashtable->lookup(file, pageNo, frameNo);
+			hashTable->lookup(file, pageNo, frameNo);
 			// GEt desired page in hash table
 			BufDesc frame = bufDescTable[frameNo];
 			//  Set refbit to true
@@ -133,7 +133,7 @@ namespace badgerdb {
 			// Add the page to buffer pool
 			bufPool[frameNo] = p;
 			// Insert record into hash table
-			hastable->insert(file, pageNo, frameNo);
+			hashTable->insert(file, pageNo, frameNo);
 			// Set appropriate frame attr
 			bufDescTable[frameNo].Set(file, pageNo);
 			// Return by page ref
@@ -155,7 +155,7 @@ namespace badgerdb {
 
 			// throw page not pinned if not pinned
 			if (frame.pinCnt <= 0) {
-				throw PageNotPinnedException(file->filename(), pageNo, frame_id)
+				throw PageNotPinnedException(file->filename(), pageNo, frame_id);
 			}
 
 			// udpate dirty value

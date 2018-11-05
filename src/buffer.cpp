@@ -214,7 +214,22 @@ namespace badgerdb {
 	// if page to be deleted is allocated a frame in pool, free it and remove from hashtable
 	void BufMgr::disposePage(File* file, const PageId PageNo)
 	{
+		FrameId frame_id;
 
+		try {
+			// lookup in hashtable
+			hashTable->lookup(file, PageNo, frame_id);
+
+			// if found, remove it and clear buffer frame
+			hashTable->remove(file, PageNo);
+			bufDescTable[frame_id].Clear();
+
+		} catch (HashNotFoundException h) {
+			// not found, ignore not found and delete
+		}
+
+		// delete page
+		file->deletePage(PageNo);
 	}
 
 	void BufMgr::printSelf(void)

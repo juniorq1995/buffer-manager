@@ -51,6 +51,7 @@ void BufMgr::advanceClock()
 // If buffer frame allocated has valid page in it, remove entry from hash table
 void BufMgr::allocBuf(FrameId & frame)
 {
+
 }
 
 // Check if page already in buffer pool and:
@@ -60,6 +61,7 @@ void BufMgr::allocBuf(FrameId & frame)
 // set appropriate refbit, increment pinCnt, return pointer to frame containing the page
 void BufMgr::readPage(File* file, const PageId pageNo, Page*& page)
 {
+
 }
 
 // decrememnts pinCntof frame, if dirty == true sets dirty bit, throws page_not_pinned_exception if pinCnt == 0
@@ -70,6 +72,7 @@ void BufMgr::unPinPage(File* file, const PageId pageNo, const bool dirty)
 	try {
 		// Lookup hash
 		hashTable->lookup(file, pageNo, frame_id);
+
 		// find frame in table
 		BufDesc frame = bufDescTable[frame_id];
 
@@ -116,7 +119,22 @@ void BufMgr::allocPage(File* file, PageId &pageNo, Page*& page)
 // if page to be deleted is allocated a frame in pool, free it and remove from hashtable
 void BufMgr::disposePage(File* file, const PageId PageNo)
 {
+	FrameId frame_id;
 
+	try {
+		// lookup in hashtable
+		hashTable->lookup(file, PageNo, frame_id);
+
+		// if found, remove it and clear buffer frame
+		hashTable->remove(file, PageNo);
+		bufDescTable[frame_id].Clear();
+
+	} catch (HashNotFoundException h) {
+		// not found, ignore not found and delete
+	}
+
+	// delete page
+	file->deletePage(PageNo);
 }
 
 void BufMgr::printSelf(void)

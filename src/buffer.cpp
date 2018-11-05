@@ -61,6 +61,35 @@ void BufMgr::allocBuf(FrameId & frame)
 // set appropriate refbit, increment pinCnt, return pointer to frame containing the page
 void BufMgr::readPage(File* file, const PageId pageNo, Page*& page)
 {
+	FrameId frameNo;
+	try{
+		// Fetch the desired hashtable
+		hashtable->lookup(file,pageNo,frameNo);
+		// GEt desired page in hash table
+		BufDesc frame = bufDescTable[frameNo];
+		//  Set refbit to true
+		frame.refbit = true;
+		// Inc pint count
+		frame.pinCnt++;
+		// Return the page reference
+		page = &bufPool[frameNo];
+		 
+	} catch (HashNotFoundException h){
+		// If page is not in hashtable, which indicates buffer pool does not contain it
+		// Therefore, we need to read from disk
+		Page p = file->readPage(pageNo);
+		// allocate buffer frame that will hold the page
+		allocBuf(frameNo);
+		// Add the page to buffer pool
+		bufPool[frameNo] = p;
+		// Insert record into hash table
+		hastable->insert(file, pageNo, frameNo);
+		// Set appropriate frame attr
+		bufDescTable[frameNo].Set(file, pageNo);
+		// Return by page ref
+		page = &bufPool[frameNo];
+	}
+
 }
 
 // decrememnts pinCntof frame, if dirty == true sets dirty bit, throws page_not_pinned_exception if pinCnt == 0

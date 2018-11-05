@@ -16,8 +16,7 @@
 
 namespace badgerdb {
 
-BufMgr::BufMgr(std::uint32_t bufs)
-	: numBufs(bufs) {
+BufMgr::BufMgr(std::uint32_t bufs) : numBufs(bufs) {
 	bufDescTable = new BufDesc[bufs];
 
   for (FrameId i = 0; i < bufs; i++)
@@ -26,12 +25,12 @@ BufMgr::BufMgr(std::uint32_t bufs)
   	bufDescTable[i].valid = false;
   }
 
-  bufPool = new Page[bufs];
+	bufPool = new Page[bufs];
 
-	int htsize = ((((int) (bufs * 1.2))*2)/2)+1;
-  hashTable = new BufHashTbl (htsize);  // allocate the buffer hash table
+	int htsize = ((((int)(bufs * 1.2)) * 2) / 2) + 1;
+	hashTable = new BufHashTbl(htsize);  // allocate the buffer hash table
 
-  clockHand = bufs - 1;
+	clockHand = bufs - 1;
 }
 
 //Flushes dirty pages and deallocates the buffer pool and BufDesc table
@@ -43,7 +42,7 @@ BufMgr::~BufMgr()
 // Advances clock to next frame in buffer pool.
 void BufMgr::advanceClock()
 {
-
+	clockHand = (clockHand == numBufs - 1) ? 0 : clockHand + 1;
 }
 
 // Allocates free frame using clock algorithm
@@ -61,12 +60,65 @@ void BufMgr::allocBuf(FrameId & frame)
 // set appropriate refbit, increment pinCnt, return pointer to frame containing the page
 void BufMgr::readPage(File* file, const PageId pageNo, Page*& page)
 {
+	FrameId frameNo;
+	try{
+		// Fetch the desired hashtable
+		hashtable->lookup(file,pageNo,frameNo);
+		// GEt desired page in hash table
+		BufDesc frame = bufDescTable[frameNo];
+		//  Set refbit to true
+		frame.refbit = true;
+		// Inc pint count
+		frame.pinCnt++;
+		// Return the page reference
+		page = &bufPool[frameNo];
+		 
+	} catch (HashNotFoundException h){
+		// If page is not in hashtable, which indicates buffer pool does not contain it
+		// Therefore, we need to read from disk
+		Page p = file->readPage(pageNo);
+		// allocate buffer frame that will hold the page
+		allocBuf(frameNo);
+		// Add the page to buffer pool
+		bufPool[frameNo] = p;
+		// Insert record into hash table
+		hastable->insert(file, pageNo, frameNo);
+		// Set appropriate frame attr
+		bufDescTable[frameNo].Set(file, pageNo);
+		// Return by page ref
+		page = &bufPool[frameNo];
+	}
+
 }
 
 // decrememnts pinCntof frame, if dirty == true sets dirty bit, throws page_not_pinned_exception if pinCnt == 0
 // does nothing if page not in table lookup
 void BufMgr::unPinPage(File* file, const PageId pageNo, const bool dirty)
 {
+	FrameId frame_id;
+	try {
+		// Lookup hash
+		hashTable->lookup(file, pageNo, frame_id);
+		// find frame in table
+		BufDesc frame = bufDescTable[frame_id];
+
+		// throw page not pinned if not pinned
+		if (frame.pinCnt <= 0) {
+			throw PageNotPinnedException(file->filename(), pageNo, frame_id)
+		}
+
+		// udpate dirty value
+		if (dirty) {
+			frame.dirty = true;
+		}
+
+		// decrement from being unpinned
+		frame.pinCnt--;
+
+	} catch (HashNotFoundException h) {
+		// Do nothing
+	}
+
 }
 
 // scans bufTable for pages belonging to file
@@ -77,6 +129,7 @@ void BufMgr::unPinPage(File* file, const PageId pageNo, const bool dirty)
 // throws bad_buffer_exception if invalid page encountered
 void BufMgr::flushFile(const File* file)
 {
+
 }
 
 // allocate empty page in file
@@ -85,6 +138,7 @@ void BufMgr::flushFile(const File* file)
 // returns page number and pointer to buffer frame
 void BufMgr::allocPage(File* file, PageId &pageNo, Page*& page)
 {
+
 }
 
 // deletes page from file
@@ -101,15 +155,20 @@ void BufMgr::printSelf(void)
 
   for (std::uint32_t i = 0; i < numBufs; i++)
 	{
-  	tmpbuf = &(bufDescTable[i]);
-		std::cout << "FrameNo:" << i << " ";
-		tmpbuf->Print();
+		BufDesc* tmpbuf;
+		int validFrames = 0;
 
-  	if (tmpbuf->valid == true)
-    	validFrames++;
-  }
+		for (std::uint32_t i = 0; i < numBufs; i++)
+		{
+			tmpbuf = &(bufDescTable[i]);
+			std::cout << "FrameNo:" << i << " ";
+			tmpbuf->Print();
 
-	std::cout << "Total Number of Valid Frames:" << validFrames << "\n";
-}
+			if (tmpbuf->valid == true)
+				validFrames++;
+		}
+
+		std::cout << "Total Number of Valid Frames:" << validFrames << "\n";
+	}
 
 }

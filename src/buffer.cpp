@@ -82,7 +82,7 @@ void BufMgr::readPage(File* file, const PageId pageNo, Page*& page)
 		// Add the page to buffer pool
 		bufPool[frameNo] = p;
 		// Insert record into hash table
-		hastable->insert(file, pageNo, frameNo);
+		hashtable->insert(file, pageNo, frameNo);
 		// Set appropriate frame attr
 		bufDescTable[frameNo].Set(file, pageNo);
 		// Return by page ref

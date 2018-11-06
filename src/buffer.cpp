@@ -1,9 +1,9 @@
 /**
- * @author See Contributors.txt for code contributors and overview of BadgerDB.
- *
- * @section LICENSE
- * Copyright (c) 2012 Database Group, Computer Sciences Department, University of Wisconsin-Madison.
- */
+* @author See Contributors.txt for code contributors and overview of BadgerDB.
+*
+* @section LICENSE
+* Copyright (c) 2012 Database Group, Computer Sciences Department, University of Wisconsin-Madison.
+*/
 
 #include <memory>
 #include <iostream>
@@ -33,10 +33,22 @@ namespace badgerdb {
 		clockHand = bufs - 1;
 	}
 
-	//Flushes dirty pages and deallocates the buffer pool and BufDesc table
+	// Flushes dirty pages and deallocates the buffer pool, BufDesc table, and hashtable
 	BufMgr::~BufMgr()
 	{
+		// Flush any dirty pages
+		for (uint32_t i = 0; i < numBufs; i++) {
 
+			BufDesc currDesc = bufDescTable[i];
+			if (currDesc.dirty && currDesc.valid) {
+				currDesc.file->writePage(bufPool[currDesc.frameNo]);
+			}
+		}
+
+		// Deallocate memory structures
+		delete[] bufDescTable;
+		delete[] bufPool;
+		delete hashTable;
 	}
 
 	// Advances clock to next frame in buffer pool.
@@ -51,15 +63,21 @@ namespace badgerdb {
 	// If buffer frame allocated has valid page in it, remove entry from hash table
 	void BufMgr::allocBuf(FrameId &frame)
 	{
+		uint32_t origLoc = clockHand;
 		BufDesc currDesc;
 		bool found;
 		uint32_t counter = 0;
 
-		// Iterate through entries until we are back at the starting location
-		// or we find a free frame
+		// Iterate through entries until we find a free frame, or
+		// discover that they're all pinned
 		while (!found && (counter < numBufs)) {
 
 			advanceClock();
+
+			// If we cycle back to start loc, clear count
+			if (clockHand == origLoc) {
+				counter = 0;
+			}
 
 			// Get description of current frame
 			currDesc = bufDescTable[clockHand];
@@ -73,27 +91,30 @@ namespace badgerdb {
 			// If valid and refbit set, clear refbit and advance clock
 			else if (currDesc.refbit) {
 
-				currDesc.refbit = false;
+				bufDescTable[clockHand].refbit = false;
+			}
+			// If frame is currently pinned increment count 
+			else if (currDesc.pinCnt > 0) {
+				counter++;
 			}
 			// If frame is valid and not pinned, use it.
-			else if (currDesc.pinCnt <= 0) {
+			else {
 
 				// If frame is dirty, write page to disk before using
 				if (currDesc.dirty) {
 
-					currDesc.file->writePage(bufPool[currDesc.frameNo]);
+					bufDescTable[clockHand].file->writePage(bufPool[currDesc.frameNo]);
 				}
-
-				// Initialize frame for new data
-				currDesc.Clear();
 
 				// Remove frame from hash table
 				hashTable->remove(currDesc.file, currDesc.pageNo);
 
+				// Initialize frame for new data
+				bufDescTable[clockHand].Clear();
+
 				frame = currDesc.frameNo;
 				found = true;
 			}
-			counter++;
 		}
 
 		// If buffer is full, throw exception
@@ -113,32 +134,38 @@ namespace badgerdb {
 		try {
 			// Fetch the desired hashtable
 			hashTable->lookup(file, pageNo, frameNo);
-			// GEt desired page in hash table
-			BufDesc frame = bufDescTable[frameNo];
+
 			//  Set refbit to true
-			frame.refbit = true;
+			bufDescTable[frameNo].refbit = true;
+
 			// Inc pint count
-			frame.pinCnt++;
+			bufDescTable[frameNo].pinCnt++;
+
 			// Return the page reference
 			page = &bufPool[frameNo];
 
 		}
 		catch (HashNotFoundException h) {
+
 			// If page is not in hashtable, which indicates buffer pool does not contain it
 			// Therefore, we need to read from disk
 			Page p = file->readPage(pageNo);
+
 			// allocate buffer frame that will hold the page
 			allocBuf(frameNo);
+
 			// Add the page to buffer pool
 			bufPool[frameNo] = p;
+
 			// Insert record into hash table
 			hashTable->insert(file, pageNo, frameNo);
+
 			// Set appropriate frame attr
 			bufDescTable[frameNo].Set(file, pageNo);
+
 			// Return by page ref
 			page = &bufPool[frameNo];
 		}
-
 	}
 
 	// decrememnts pinCntof frame, if dirty == true sets dirty bit, throws page_not_pinned_exception if pinCnt == 0
@@ -146,29 +173,24 @@ namespace badgerdb {
 	void BufMgr::unPinPage(File* file, const PageId pageNo, const bool dirty)
 	{
 		FrameId frame_id;
-		try {
-			// Lookup hash
-			hashTable->lookup(file, pageNo, frame_id);
-			// find frame in table
-			BufDesc frame = bufDescTable[frame_id];
 
-			// throw page not pinned if not pinned
-			if (frame.pinCnt <= 0) {
-				throw PageNotPinnedException(file->filename(), pageNo, frame_id);
-			}
+		// Lookup hash
+		hashTable->lookup(file, pageNo, frame_id);
 
-			// udpate dirty value
-			if (dirty) {
-				frame.dirty = true;
-			}
+		// find frame in table
+		BufDesc frame = bufDescTable[frame_id];
 
-			// decrement from being unpinned
-			frame.pinCnt--;
-
+		if (frame.pinCnt <= 0) {
+			throw PageNotPinnedException(file->filename(), pageNo, frame_id);
 		}
-		catch (HashNotFoundException h) {
-			// Do nothing
+
+		// udpate dirty value
+		if (dirty) {
+			bufDescTable[frame_id].dirty = true;
 		}
+
+		// decrement from being unpinned
+		bufDescTable[frame_id].pinCnt--;
 
 	}
 
@@ -181,6 +203,35 @@ namespace badgerdb {
 	void BufMgr::flushFile(const File* file)
 	{
 		
+		// Iterate through buffer and flush all frames belonging to current file
+		for (uint32_t i = 0; i < numBufs; i++) {
+
+			BufDesc currDesc = bufDescTable[i];
+
+			if (currDesc.file == file) {
+
+				// If not valid, throw a BadBufferException
+				if (!currDesc.valid)
+					throw BadBufferException(currDesc.frameNo, currDesc.dirty, currDesc.valid, currDesc.refbit);
+
+				// If pinned, throw a PagePinnedException
+				if (currDesc.pinCnt > 0)
+					throw PagePinnedException(file->filename(), currDesc.pageNo, currDesc.frameNo);
+
+				// If dirty, write to disk and clear dirty bit
+				if (currDesc.dirty) {
+
+					Page currPage = bufPool[currDesc.frameNo];
+					bufDescTable[i].file->writePage(currPage);
+					bufDescTable[i].dirty = false;
+				}
+
+				// Remove frame mapping from hash table and clear buffer location
+				hashTable->remove(file, currDesc.pageNo);
+
+				bufDescTable[i].Clear();
+			}
+		}
 	}
 
 	// allocate empty page in file

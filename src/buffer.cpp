@@ -42,7 +42,7 @@ namespace badgerdb {
 	// Advances clock to next frame in buffer pool.
 	void BufMgr::advanceClock()
 	{
-		clockHand = (clockHand == numBufs - 1) ? 0 : clockHand + 1;
+		clockHand = (clockHand + 1) % numBufs;
 	}
 
 	// Allocates free frame using clock algorithm
@@ -51,10 +51,9 @@ namespace badgerdb {
 	// If buffer frame allocated has valid page in it, remove entry from hash table
 	void BufMgr::allocBuf(FrameId &frame)
 	{
-		int origLoc = clockHand;
 		BufDesc currDesc;
 		bool found;
-		int counter = 0;
+		uint32_t counter = 0;
 
 		// Iterate through entries until we are back at the starting location
 		// or we find a free frame
@@ -181,7 +180,7 @@ namespace badgerdb {
 	// throws bad_buffer_exception if invalid page encountered
 	void BufMgr::flushFile(const File* file)
 	{
-
+		
 	}
 
 	// allocate empty page in file
@@ -190,18 +189,19 @@ namespace badgerdb {
 	// returns page number and pointer to buffer frame
 	void BufMgr::allocPage(File* file, PageId &pageNo, Page*& page)
 	{
-		// Number of available frame (filled by allocBuf)
+		// Available frame (filled by allocBuf)
 		FrameId frame;
 
-		// allocate new page
+		// Allocate new page
 		Page currPage = file->allocatePage();
 
-		// allocate buffer frame
+		// Allocate buffer frame
 		allocBuf(frame);
 
-		// put page in buffer
+		// Put page in buffer pool
 		bufPool[frame] = currPage;
 
+		// Add record to hashTable
 		hashTable->insert(file, currPage.page_number(), frame);
 
 		bufDescTable[frame].Set(file, currPage.page_number());
@@ -224,7 +224,8 @@ namespace badgerdb {
 			hashTable->remove(file, PageNo);
 			bufDescTable[frame_id].Clear();
 
-		} catch (HashNotFoundException h) {
+		}
+		catch (HashNotFoundException h) {
 			// not found, ignore not found and delete
 		}
 
@@ -239,20 +240,14 @@ namespace badgerdb {
 
 		for (std::uint32_t i = 0; i < numBufs; i++)
 		{
-			BufDesc* tmpbuf;
-			int validFrames = 0;
+			tmpbuf = &(bufDescTable[i]);
+			std::cout << "FrameNo:" << i << " ";
+			tmpbuf->Print();
 
-			for (std::uint32_t i = 0; i < numBufs; i++)
-			{
-				tmpbuf = &(bufDescTable[i]);
-				std::cout << "FrameNo:" << i << " ";
-				tmpbuf->Print();
-
-				if (tmpbuf->valid == true)
-					validFrames++;
-			}
-
-			std::cout << "Total Number of Valid Frames:" << validFrames << "\n";
+			if (tmpbuf->valid == true)
+				validFrames++;
 		}
 
+		std::cout << "Total Number of Valid Frames:" << validFrames << "\n";
 	}
+}

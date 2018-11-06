@@ -129,7 +129,7 @@ void BufMgr::unPinPage(File* file, const PageId pageNo, const bool dirty)
 // throws bad_buffer_exception if invalid page encountered
 void BufMgr::flushFile(const File* file)
 {
-
+	
 }
 
 // allocate empty page in file

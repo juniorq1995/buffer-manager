@@ -65,7 +65,7 @@ namespace badgerdb {
 	{
 		uint32_t origLoc = clockHand;
 		BufDesc currDesc;
-		bool found;
+		bool found = false;
 		uint32_t counter = 0;
 
 		// Iterate through entries until we find a free frame, or
